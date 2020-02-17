@@ -4,7 +4,7 @@
 #define N_LEDS 339
 
 // Size of wave
-#define N_WAVE 80
+#define N_WAVE 5
 
 // Delay
 #define DELAY 150
@@ -29,11 +29,14 @@ CRGB leds[N_LEDS];
 void setup() { 
       FastLED.addLeds<DOTSTAR, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, N_LEDS).setCorrection( TypicalLEDStrip ).setTemperature( DirectSunlight);
       FastLED.setBrightness(  BRIGHTNESS );
+      Serial.begin(9600);
 }
 
 void loop() { 
+  bloom();
+  
   // Turn the LED on, then pause
-  candyCane(5, 20);
+  //brightnessWave(10, 20);
 }
 
 void candyCane(uint16_t len, uint16_t space) {
@@ -50,6 +53,64 @@ void candyCane(uint16_t len, uint16_t space) {
     delay(DELAY);
   }
 }
+
+void brightnessWave(uint16_t len, uint16_t space) {
+  for (uint16_t i = 0; i < N_LEDS; i++) {
+    for (uint16_t location  = 0; location < N_LEDS; location++) {
+      if (location % (len + space) < len) {
+         leds[(i + location) % N_LEDS] = CHSV(0, 0, cos8(map(location % len, 0, len - 1, 0, 127)));
+      } else {
+         leds[(i + location) % N_LEDS] = CRGB::Black;
+      }
+      Serial.println(cos8(map(location % len, 0, len - 1, 0, 127)));
+    }
+    FastLED.show();
+    delay(DELAY);
+  }
+}
+
+void bloom() {
+   // eight colored dots, weaving in and out of sync with each other
+  fadeToBlackBy( leds, N_LEDS, 20);
+  byte dothue = 0;
+  for( int i = 0; i < 8; i++) {
+    placeWave(beatsin16( i+7, 0, N_LEDS-1 ), 20);
+    FastLED.show();
+  }
+}
+
+void placeWave(uint16_t location, uint16_t waveLength) {
+  leds[location % N_LEDS] = CHSV(0, 0, 255);
+  for(uint16_t i = 0; i < waveLength / 2; i++) {
+    leds[(location + i) % N_LEDS] = CHSV(0, 0, 255 - sin8(map(i, 0, waveLength, 0, 128)));
+    leds[(location - i) % N_LEDS] = CHSV(0, 0, 255 - sin8(map(i, 0, waveLength, 0, 128)));
+  }
+  FastLED.show();
+}
+
+void bpm()
+{
+  // colored stripes pulsing at a defined Beats-Per-Minute (BPM)
+  uint8_t BeatsPerMinute = 62;
+  uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
+  for( int i = 0; i < N_LEDS; i++) {
+    for (uint16_t location  = 0; location < N_LEDS; location++) {
+      leds[(i + location) % N_LEDS] = CHSV(0, 0, beat);
+    }
+    FastLED.show();
+  }
+}
+
+void sinelon()
+{
+  // a colored dot sweeping back and forth, with fading trails
+  fadeToBlackBy( leds, N_LEDS, 20);
+  int pos = beatsin16(13,0,N_LEDS);
+  leds[pos] += CHSV( 0, 0, 192);
+  FastLED.show();
+  delay(DELAY);
+}
+
 
 void movingSnake(uint8_t len, uint8_t space) {
   uint16_t waveStep;

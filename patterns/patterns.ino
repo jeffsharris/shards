@@ -7,13 +7,14 @@
 #define N_WAVE 5
 
 // Delay
-#define DELAY 150
+#define DELAY 50
 
 // The brightness value to use
 #define BRIGHTNESS                  255
 
-
 #define COLOR_ORDER BRG
+
+#define DECAY 128
 
 // For led chips like Neopixels, which have a data line, ground, and power, you just
 // need to define DATA_PIN.  For led chipsets that are SPI based (four wires - data, clock,
@@ -26,17 +27,49 @@
 // Define the array of leds
 CRGB leds[N_LEDS];
 
+struct Wave {
+  uint16_t location;
+  uint8_t brightness;
+  uint8_t travelSpeed;
+  uint8_t lifetime;
+  int creationTime;
+};
+
+struct Wave waves[5];
+
+int elapsedTime = 0;
+
 void setup() { 
       FastLED.addLeds<DOTSTAR, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, N_LEDS).setCorrection( TypicalLEDStrip ).setTemperature( DirectSunlight);
       FastLED.setBrightness(  BRIGHTNESS );
       Serial.begin(9600);
+      waves[0] = {.location = 45, .brightness = 255, .travelSpeed = 1, .lifetime = 20, .creationTime = 0};
+      waves[1] = {.location = 200, .brightness = 150, .travelSpeed = 1, .lifetime = 20, .creationTime = 0};
+      waves[3] = {.location = 103, .brightness = 230, .travelSpeed = 1, .lifetime = 25, .creationTime = 0};
+      waves[4] = {.location = 360, .brightness = 50, .travelSpeed = 1, .lifetime = 6, .creationTime = 0};
+      waves[5] = {.location = 70, .brightness = 150, .travelSpeed = 1, .lifetime = 20, .creationTime = 0};
 }
 
-void loop() { 
-  bloom();
-  
-  // Turn the LED on, then pause
-  //brightnessWave(10, 20);
+void loop() {
+
+    fill_solid(leds, N_LEDS, CRGB::Black);
+    for (uint8_t i = 0; i < 5; i++) {
+      Wave currentWave = waves[i];
+      uint8_t age = elapsedTime - currentWave.creationTime;
+      Serial.println(age);
+      for (uint8_t j = 1; j <= age; j++) {
+        uint8_t ledbrightness = leds[(currentWave.location + j) % N_LEDS].red + currentWave.brightness * j / (age * 1.0);
+        leds[(currentWave.location + j) % N_LEDS] = CRGB(ledbrightness, ledbrightness, ledbrightness);
+        leds[(currentWave.location - j) % N_LEDS] = CRGB(ledbrightness, ledbrightness, ledbrightness);
+      }
+      if (age == currentWave.lifetime) {
+        waves[i].creationTime = elapsedTime;
+        Serial.println("Resetting wave");
+      }
+    }
+    FastLED.show();
+    delay(DELAY);
+    elapsedTime++;
 }
 
 void candyCane(uint16_t len, uint16_t space) {
@@ -47,6 +80,26 @@ void candyCane(uint16_t len, uint16_t space) {
         leds[(i + location) % N_LEDS] = CRGB::White;
       } else {
         leds[(i + location) % N_LEDS] = CRGB::Black;
+      }
+    }
+    FastLED.show();
+    delay(DELAY);
+  }
+}
+
+void bloomWave(uint16_t location, uint16_t halfLength, uint8_t brightness) {
+  leds[location] = CHSV(0, 0, brightness); 
+  FastLED.show();
+  delay(DELAY);
+  for (uint16_t i = 0; i < halfLength; i++) {
+    leds[location].nscale8(DECAY);
+    for (uint16_t j = 1; j <= i; j++) {
+      if (j < i) {
+        leds[(location + j) % N_LEDS].nscale8(DECAY);
+        leds[(location - j) % N_LEDS].nscale8(DECAY);
+      } else {
+        leds[(location + j) % N_LEDS] = CHSV(0, 0, 255);
+        leds[(location - j) % N_LEDS] = CHSV(0, 0, 255);
       }
     }
     FastLED.show();

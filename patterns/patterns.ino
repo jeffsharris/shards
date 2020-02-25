@@ -16,6 +16,14 @@
 
 #define DECAY 128
 
+#define N_WAVES 10
+
+#define MIN_BRIGHT 50
+#define MAX_BRIGHT 255
+
+#define MIN_LENGTH 5
+#define MAX_LENGTH 20
+
 // For led chips like Neopixels, which have a data line, ground, and power, you just
 // need to define DATA_PIN.  For led chipsets that are SPI based (four wires - data, clock,
 // ground, and power), like the LPD8806 define both DATA_PIN and CLOCK_PIN
@@ -35,7 +43,7 @@ struct Wave {
   int creationTime;
 };
 
-struct Wave waves[5];
+struct Wave waves[N_WAVES];
 
 int elapsedTime = 0;
 
@@ -43,28 +51,33 @@ void setup() {
       FastLED.addLeds<DOTSTAR, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, N_LEDS).setCorrection( TypicalLEDStrip ).setTemperature( DirectSunlight);
       FastLED.setBrightness(  BRIGHTNESS );
       Serial.begin(9600);
-      waves[0] = {.location = 45, .brightness = 255, .travelSpeed = 1, .lifetime = 20, .creationTime = 0};
-      waves[1] = {.location = 200, .brightness = 150, .travelSpeed = 1, .lifetime = 20, .creationTime = 0};
-      waves[3] = {.location = 103, .brightness = 230, .travelSpeed = 1, .lifetime = 25, .creationTime = 0};
-      waves[4] = {.location = 360, .brightness = 50, .travelSpeed = 1, .lifetime = 6, .creationTime = 0};
-      waves[5] = {.location = 70, .brightness = 150, .travelSpeed = 1, .lifetime = 20, .creationTime = 0};
+      for (uint8_t i = 0; i < N_WAVES; i++) {
+        randomWave(&waves[i]);
+      }
 }
+
+void randomWave(struct Wave * waveAddress) {
+  waveAddress->location = random(N_LEDS);
+  waveAddress->brightness = random(MIN_BRIGHT, MAX_BRIGHT);
+  waveAddress->travelSpeed = 1;
+  waveAddress->lifetime = random(MIN_LENGTH, MAX_LENGTH);
+  waveAddress->creationTime = elapsedTime;
+}
+
 
 void loop() {
 
     fill_solid(leds, N_LEDS, CRGB::Black);
-    for (uint8_t i = 0; i < 5; i++) {
+    for (uint8_t i = 0; i < N_WAVES; i++) {
       Wave currentWave = waves[i];
       uint8_t age = elapsedTime - currentWave.creationTime;
-      Serial.println(age);
       for (uint8_t j = 1; j <= age; j++) {
         uint8_t ledbrightness = leds[(currentWave.location + j) % N_LEDS].red + currentWave.brightness * j / (age * 1.0);
         leds[(currentWave.location + j) % N_LEDS] = CRGB(ledbrightness, ledbrightness, ledbrightness);
         leds[(currentWave.location - j) % N_LEDS] = CRGB(ledbrightness, ledbrightness, ledbrightness);
       }
       if (age == currentWave.lifetime) {
-        waves[i].creationTime = elapsedTime;
-        Serial.println("Resetting wave");
+        randomWave(&waves[i]);
       }
     }
     FastLED.show();

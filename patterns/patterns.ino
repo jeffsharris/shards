@@ -7,7 +7,7 @@
 #define N_WAVE 5
 
 // Delay
-#define DELAY 50
+#define DELAY 1000
 
 // The brightness value to use
 #define BRIGHTNESS                  255
@@ -22,7 +22,9 @@
 #define MAX_BRIGHT 255
 
 #define MIN_LENGTH 5
-#define MAX_LENGTH 20
+#define MAX_LENGTH 50
+
+#define MIN_SPEED 15
 
 // For led chips like Neopixels, which have a data line, ground, and power, you just
 // need to define DATA_PIN.  For led chipsets that are SPI based (four wires - data, clock,
@@ -51,15 +53,40 @@ void setup() {
       FastLED.addLeds<DOTSTAR, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, N_LEDS).setCorrection( TypicalLEDStrip ).setTemperature( DirectSunlight);
       FastLED.setBrightness(  BRIGHTNESS );
       Serial.begin(9600);
-      for (uint8_t i = 0; i < N_WAVES; i++) {
-        randomWave(&waves[i]);
-      }
+
+//      for (uint8_t i = 0; i < N_WAVES; i++) {
+//        randomWave(&waves[i]);
+//      }
+}
+
+
+void sideFill(uint8_t beginning, uint8_t ending) {
+  uint8_t len = ending - beginning;
+  for (uint8_t location = 0; location < 200; location++) {
+    for (uint8_t i = 0; i < len; i++) {
+      leds[((location + i) % len) + beginning] = CHSV(0, 0, cos8(map(i, 0, len, 0, 127)));
+    }
+    FastLED.show();
+    delay(DELAY);
+  }
+}
+
+void waveFill(uint8_t nWaves) {
+  for (uint16_t location = 0; location < N_LEDS; location++) {
+    for (uint16_t i = 0; i < N_LEDS; i++) {
+      leds[((location + i) % N_LEDS)] = CHSV(0, 0, cos8(map(i % (N_LEDS / nWaves), 0, N_LEDS / nWaves, 0, 127)));
+      FastLED.show();
+    }
+    FastLED.show();
+    //delay(DELAY);
+
+  }
 }
 
 void randomWave(struct Wave * waveAddress) {
   waveAddress->location = random(N_LEDS);
   waveAddress->brightness = random(MIN_BRIGHT, MAX_BRIGHT);
-  waveAddress->travelSpeed = 1;
+  waveAddress->travelSpeed = random(1, MIN_SPEED);
   waveAddress->lifetime = random(MIN_LENGTH, MAX_LENGTH);
   waveAddress->creationTime = elapsedTime;
 }
@@ -67,22 +94,26 @@ void randomWave(struct Wave * waveAddress) {
 
 void loop() {
 
-    fill_solid(leds, N_LEDS, CRGB::Black);
-    for (uint8_t i = 0; i < N_WAVES; i++) {
-      Wave currentWave = waves[i];
-      uint8_t age = elapsedTime - currentWave.creationTime;
-      for (uint8_t j = 1; j <= age; j++) {
-        uint8_t ledbrightness = leds[(currentWave.location + j) % N_LEDS].red + currentWave.brightness * j / (age * 1.0);
-        leds[(currentWave.location + j) % N_LEDS] = CRGB(ledbrightness, ledbrightness, ledbrightness);
-        leds[(currentWave.location - j) % N_LEDS] = CRGB(ledbrightness, ledbrightness, ledbrightness);
-      }
-      if (age == currentWave.lifetime) {
-        randomWave(&waves[i]);
-      }
-    }
-    FastLED.show();
-    delay(DELAY);
-    elapsedTime++;
+        waveFill(4);
+
+//solidSnake(40);
+
+//    fill_solid(leds, N_LEDS, CRGB::Black);
+//    for (uint8_t i = 0; i < N_WAVES; i++) {
+//      Wave currentWave = waves[i];
+//      uint8_t age = (elapsedTime - waves[i].creationTime) / waves[i].travelSpeed;
+//        for (uint8_t j = 1; j <= age; j++) {
+//          uint8_t ledbrightness = leds[(waves[i].location + j) % N_LEDS].red + waves[i].brightness * j / (age * 1.0);
+//          leds[(waves[i].location + j) % N_LEDS] = CRGB(ledbrightness, ledbrightness, ledbrightness);
+//          leds[(waves[i].location - j) % N_LEDS] = CRGB(ledbrightness, ledbrightness, ledbrightness);
+//        }
+//        if (age == waves[i].lifetime) {
+//          randomWave(&waves[i]);
+//        }
+//    }
+//    FastLED.show();
+//    delay(DELAY);
+//    elapsedTime++;
 }
 
 void candyCane(uint16_t len, uint16_t space) {
@@ -187,6 +218,18 @@ void movingSnake(uint8_t len, uint8_t space) {
   for (currentStep = 0; currentStep < N_LEDS; currentStep++) {
     leds[(currentStep - 1) % N_LEDS] = CRGB::Black;
     leds[(currentStep + N_WAVE) % N_LEDS] = CRGB::White;
+    FastLED.show();
+    delay(DELAY);
+  }
+}
+
+void solidSnake(uint8_t len) {
+  uint16_t waveStep;
+  for (waveStep = 0; waveStep < N_LEDS; waveStep++) {
+    fill_solid(leds, N_LEDS, CRGB::Black);
+    for (uint8_t loc = 0; loc < len; loc++) {
+      leds[(waveStep+loc) % N_LEDS] = CRGB::White;
+    }
     FastLED.show();
     delay(DELAY);
   }
